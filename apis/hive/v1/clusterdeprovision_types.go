@@ -54,6 +54,8 @@ type ClusterDeprovisionPlatform struct {
 	Ovirt *OvirtClusterDeprovision `json:"ovirt,omitempty"`
 	// IBMCloud contains IBM Cloud specific deprovision settings
 	IBMCloud *IBMClusterDeprovision `json:"ibmcloud,omitempty"`
+	// PowerVS contains PowerVS specific deprovision settings
+	PowerVS *PowerVSClusterDeprovision `json:"powervs,omitempty"`
 }
 
 // AWSClusterDeprovision contains AWS-specific configuration for a ClusterDeprovision
@@ -148,6 +150,18 @@ type IBMClusterDeprovision struct {
 	// BaseDomain is the DNS base domain.
 	// TODO: Use the non-platform-specific BaseDomain field.
 	BaseDomain string `json:"baseDomain"`
+}
+
+// PowerVSClusterDeprovision contains PowerVS specific configuration for a ClusterDeprovision
+type PowerVSClusterDeprovision struct {
+	// BaseDomain is the DNS base domain
+	BaseDomain string `json:"baseDomain"`
+	// CredentialsSecretRef is the IBM Cloud credentials to use for deprovisioning the cluster
+	CredentialsSecretRef corev1.LocalObjectReference `json:"credentialsSecretRef"`
+	// Region specifies the PowerVS region
+	Region string `json:"region"`
+	// Zone specifies the PowerVS zone
+	Zone string `json:"zone"`
 }
 
 // +genclient
