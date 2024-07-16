@@ -482,6 +482,45 @@ spec:
                         - high_performance
                         type: string
                     type: object
+                  powervs:
+                    description: IBMCloud PowerVS is the configuration used when installing
+                      on IBMCloud PowerVS.
+                    properties:
+                      memoryGiB:
+                        description: memoryGiB is the size of a virtual machine's
+                          memory, in GiB.
+                        format: int32
+                        type: integer
+                      procType:
+                        description: ProcType defines the processor sharing model
+                          for the instance. Must be one of {Capped, Dedicated, Shared}.
+                        enum:
+                        - Dedicated
+                        - Shared
+                        - Capped
+                        - ""
+                        type: string
+                      processors:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: Processors defines the processing units for the
+                          instance.
+                        x-kubernetes-int-or-string: true
+                      smtLevel:
+                        description: SMTLevel specifies the level of SMT to set the
+                          control plane and worker nodes to.
+                        type: string
+                      sysType:
+                        description: SysType defines the system type for instance.
+                        type: string
+                      volumeIDs:
+                        description: VolumeIDs is the list of volumes attached to
+                          the instance.
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   vsphere:
                     description: VSphere is the configuration used when installing
                       on vSphere

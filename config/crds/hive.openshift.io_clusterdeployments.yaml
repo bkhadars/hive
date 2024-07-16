@@ -780,6 +780,39 @@ spec:
                     - ovirt_cluster_id
                     - storage_domain_id
                     type: object
+                  powervs:
+                    description: IBMCloud PowerVS is configuration used when installing
+                      on IBMCLOUD PowerVS
+                    properties:
+                      credentialsSecretRef:
+                        description: CredentialsSecretRef refers to a secret that
+                          contains the IBMCLOUD account access credentials.
+                        properties:
+                          name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      powervsResourceGroup:
+                        description: PowerVSResourceGroup is the resource group in
+                          which Power VS resources will be created.
+                        type: string
+                      region:
+                        description: Region specifies the IBMCLOUD region where the
+                          cluster will be created.
+                        type: string
+                      zone:
+                        description: Zone specifies the IBM Cloud colo region where
+                          the cluster will be created. At this time, only single-zone
+                          clusters are supported.
+                        type: string
+                    required:
+                    - credentialsSecretRef
+                    - powervsResourceGroup
+                    - region
+                    - zone
+                    type: object
                   vsphere:
                     description: VSphere is the configuration used when installing
                       on vSphere
