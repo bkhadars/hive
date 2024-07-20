@@ -306,6 +306,9 @@ func (a *ClusterDeploymentValidatingAdmissionHook) validateCreate(admissionSpec 
 		if cd.Spec.Platform.IBMCloud != nil && cd.Spec.Provisioning.ManifestsConfigMapRef == nil && cd.Spec.Provisioning.ManifestsSecretRef == nil {
 			allErrs = append(allErrs, field.Required(specPath.Child("provisioning"), "must specify manifestsConfigMapRef or manifestsSecretRef when platform is IBM Cloud"))
 		}
+		if cd.Spec.Platform.PowerVS != nil && cd.Spec.Provisioning.ManifestsConfigMapRef == nil && cd.Spec.Provisioning.ManifestsSecretRef == nil {
+			allErrs = append(allErrs, field.Required(specPath.Child("provisioning"), "must specify manifestsConfigMapRef or manifestsSecretRef when platform is IBM Power VS"))
+		}
 		if cd.Spec.Provisioning.ManifestsConfigMapRef != nil && cd.Spec.Provisioning.ManifestsSecretRef != nil {
 			allErrs = append(allErrs, field.Invalid(specPath.Child("provisioning", "manifestsConfigMapRef"), cd.Spec.Provisioning.ManifestsConfigMapRef.Name, "manifestsConfigMapRef and manifestsSecretRef are mutually exclusive"))
 		}
@@ -539,6 +542,23 @@ func validateClusterPlatform(path *field.Path, platform hivev1.Platform) field.E
 		}
 		if ibmCloud.Region == "" {
 			allErrs = append(allErrs, field.Required(ibmCloudPath.Child("region"), "must specify IBM region"))
+		}
+	}
+
+	if powervs := platform.PowerVS; powervs != nil {
+		numberOfPlatforms++
+		powerVSCloudPath := path.Child("powervs")
+		if powervs.CredentialsSecretRef.Name == "" {
+			allErrs = append(allErrs, field.Required(powerVSCloudPath.Child("credentialsSecretRef", "name"), "must specify secrets for IBM Power VS access"))
+		}
+		if powervs.Region == "" {
+			allErrs = append(allErrs, field.Required(powerVSCloudPath.Child("region"), "must specify IBM Power VS region"))
+		}
+		if powervs.PowerVSResourceGroup == "" {
+			allErrs = append(allErrs, field.Required(powerVSCloudPath.Child("powervs-resourcegroup-name"), "must specify resourcegroup name for IBM Power VS"))
+		}
+		if powervs.Zone == "" {
+			allErrs = append(allErrs, field.Required(powerVSCloudPath.Child("zone"), "must specify zone for IBM Power VS"))
 		}
 	}
 	if platform.BareMetal != nil {

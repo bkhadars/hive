@@ -14,6 +14,7 @@ import (
 	"github.com/openshift/hive/apis/hive/v1/none"
 	"github.com/openshift/hive/apis/hive/v1/openstack"
 	"github.com/openshift/hive/apis/hive/v1/ovirt"
+	"github.com/openshift/hive/apis/hive/v1/powervs"
 	"github.com/openshift/hive/apis/hive/v1/vsphere"
 )
 
@@ -44,6 +45,10 @@ const (
 	// searching and filtering clusters, as well as in SelectorSyncSets to only
 	// target specific regions of the cluster-platform.
 	HiveClusterRegionLabel = "hive.openshift.io/cluster-region"
+
+	// HiveClusterZoneLabel is a label that is applied to ClusterDeployments
+	// to denote which zone the cluster was created in.
+	HiveClusterZoneLabel = "hive.openshift.io/cluster-zone"
 
 	// FinalizerArgoCDCluster is used on ClusterDeployments to ensure we clean up the ArgoCD cluster
 	// secret before cleaning up the API object.
@@ -654,6 +659,9 @@ type Platform struct {
 
 	// IBMCloud is the configuration used when installing on IBM Cloud
 	IBMCloud *ibmcloud.Platform `json:"ibmcloud,omitempty"`
+
+	// PowerVS is configuration used when installing on IBM Power VS
+	PowerVS *powervs.Platform `json:"powervs,omitempty"`
 
 	// None indicates platform-agnostic install.
 	// https://docs.openshift.com/container-platform/4.7/installing/installing_platform_agnostic/installing-platform-agnostic.html

@@ -1166,6 +1166,44 @@ objects:
                       - ovirt_cluster_id
                       - storage_domain_id
                       type: object
+                    powervs:
+                      description: PowerVS is configuration used when installing on
+                        IBM Power VS
+                      properties:
+                        credentialsSecretRef:
+                          description: CredentialsSecretRef refers to a secret that
+                            contains the IBM account access credentials.
+                          properties:
+                            name:
+                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              type: string
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        powervsResourceGroup:
+                          description: PowerVSResourceGroup is the resource group
+                            in which Power VS resources will be created.
+                          type: string
+                        region:
+                          description: Region specifies the IBM Cloud colo region
+                            where the cluster will be created.
+                          type: string
+                        userID:
+                          description: UserID is the login for the user's IBM Cloud
+                            account.
+                          type: string
+                        zone:
+                          description: Zone specifies the IBM Cloud colo region where
+                            the cluster will be created. At this time, only single-zone
+                            clusters are supported.
+                          type: string
+                      required:
+                      - credentialsSecretRef
+                      - powervsResourceGroup
+                      - region
+                      - userID
+                      - zone
+                      type: object
                     vsphere:
                       description: VSphere is the configuration used when installing
                         on vSphere
@@ -1868,6 +1906,40 @@ objects:
                       - certificatesSecretRef
                       - clusterID
                       - credentialsSecretRef
+                      type: object
+                    powervs:
+                      description: PowerVS contains IBM Power VS specific deprovision
+                        settings
+                      properties:
+                        baseDomain:
+                          description: BaseDomain is the DNS base domain
+                          type: string
+                        credentialsSecretRef:
+                          description: CredentialsSecretRef is the PowerVS Cloud credentials
+                            to use for deprovisioning the cluster
+                          properties:
+                            name:
+                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              type: string
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        powerVSResourceGroup:
+                          description: PowerVSResourceGroup is the resource group
+                            where the cluster was created.
+                          type: string
+                        region:
+                          description: Region specifies the PowerVS region
+                          type: string
+                        zone:
+                          description: Zone specifies the PowerVS zone
+                          type: string
+                      required:
+                      - baseDomain
+                      - credentialsSecretRef
+                      - powerVSResourceGroup
+                      - region
+                      - zone
                       type: object
                     vsphere:
                       description: VSphere contains VMWare vSphere-specific deprovision
@@ -2660,6 +2732,44 @@ objects:
                       - credentialsSecretRef
                       - ovirt_cluster_id
                       - storage_domain_id
+                      type: object
+                    powervs:
+                      description: PowerVS is configuration used when installing on
+                        IBM Power VS
+                      properties:
+                        credentialsSecretRef:
+                          description: CredentialsSecretRef refers to a secret that
+                            contains the IBM account access credentials.
+                          properties:
+                            name:
+                              description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                                TODO: Add other useful fields. apiVersion, kind, uid?'
+                              type: string
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        powervsResourceGroup:
+                          description: PowerVSResourceGroup is the resource group
+                            in which Power VS resources will be created.
+                          type: string
+                        region:
+                          description: Region specifies the IBM Cloud colo region
+                            where the cluster will be created.
+                          type: string
+                        userID:
+                          description: UserID is the login for the user's IBM Cloud
+                            account.
+                          type: string
+                        zone:
+                          description: Zone specifies the IBM Cloud colo region where
+                            the cluster will be created. At this time, only single-zone
+                            clusters are supported.
+                          type: string
+                      required:
+                      - credentialsSecretRef
+                      - powervsResourceGroup
+                      - region
+                      - userID
+                      - zone
                       type: object
                     vsphere:
                       description: VSphere is the configuration used when installing
@@ -5459,6 +5569,45 @@ objects:
                           - server
                           - high_performance
                           type: string
+                      type: object
+                    powervs:
+                      description: PowerVS is the configuration used when installing
+                        on IBM Power VS.
+                      properties:
+                        memoryGiB:
+                          description: memoryGiB is the size of a virtual machine's
+                            memory, in GiB.
+                          format: int32
+                          type: integer
+                        procType:
+                          description: ProcType defines the processor sharing model
+                            for the instance. Must be one of {Capped, Dedicated, Shared}.
+                          enum:
+                          - Dedicated
+                          - Shared
+                          - Capped
+                          - ''
+                          type: string
+                        processors:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: Processors defines the processing units for
+                            the instance.
+                          x-kubernetes-int-or-string: true
+                        smtLevel:
+                          description: SMTLevel specifies the level of SMT to set
+                            the control plane and worker nodes to.
+                          type: string
+                        sysType:
+                          description: SysType defines the system type for instance.
+                          type: string
+                        volumeIDs:
+                          description: VolumeIDs is the list of volumes attached to
+                            the instance.
+                          items:
+                            type: string
+                          type: array
                       type: object
                     vsphere:
                       description: VSphere is the configuration used when installing

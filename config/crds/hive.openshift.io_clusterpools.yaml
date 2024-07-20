@@ -633,6 +633,44 @@ spec:
                     - ovirt_cluster_id
                     - storage_domain_id
                     type: object
+                  powervs:
+                    description: PowerVS is configuration used when installing on
+                      IBM Power VS
+                    properties:
+                      credentialsSecretRef:
+                        description: CredentialsSecretRef refers to a secret that
+                          contains the IBM account access credentials.
+                        properties:
+                          name:
+                            description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              TODO: Add other useful fields. apiVersion, kind, uid?'
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      powervsResourceGroup:
+                        description: PowerVSResourceGroup is the resource group in
+                          which Power VS resources will be created.
+                        type: string
+                      region:
+                        description: Region specifies the IBM Cloud colo region where
+                          the cluster will be created.
+                        type: string
+                      userID:
+                        description: UserID is the login for the user's IBM Cloud
+                          account.
+                        type: string
+                      zone:
+                        description: Zone specifies the IBM Cloud colo region where
+                          the cluster will be created. At this time, only single-zone
+                          clusters are supported.
+                        type: string
+                    required:
+                    - credentialsSecretRef
+                    - powervsResourceGroup
+                    - region
+                    - userID
+                    - zone
+                    type: object
                   vsphere:
                     description: VSphere is the configuration used when installing
                       on vSphere

@@ -22,6 +22,7 @@ import (
 	hivev1ibmcloud "github.com/openshift/hive/apis/hive/v1/ibmcloud"
 	hivev1openstack "github.com/openshift/hive/apis/hive/v1/openstack"
 	hivev1ovirt "github.com/openshift/hive/apis/hive/v1/ovirt"
+	hivev1powervs "github.com/openshift/hive/apis/hive/v1/powervs"
 	hivev1vsphere "github.com/openshift/hive/apis/hive/v1/vsphere"
 	hivecontractsv1alpha1 "github.com/openshift/hive/apis/hivecontracts/v1alpha1"
 
@@ -169,6 +170,18 @@ func validAgentBareMetalClusterDeployment() *hivev1.ClusterDeployment {
 		},
 	}
 	cd.Spec.Provisioning.InstallConfigSecretRef = nil
+	return cd
+}
+
+func validPowerVSClusterDeployment() *hivev1.ClusterDeployment {
+	cd := clusterDeploymentTemplate()
+	cd.Spec.Platform.PowerVS = &hivev1powervs.Platform{
+		CredentialsSecretRef: corev1.LocalObjectReference{Name: "fake-creds-secret"},
+		PowerVSResourceGroup: "my-rg",
+		Region:               "dal",
+		Zone:                 "dal10",
+	}
+	cd.Spec.Provisioning.ManifestsSecretRef = &corev1.LocalObjectReference{Name: "fake-manifests-secret"}
 	return cd
 }
 
@@ -1409,6 +1422,23 @@ func TestClusterDeploymentValidate(t *testing.T) {
 			name: "IBMCloud create missing manifests",
 			newObject: func() *hivev1.ClusterDeployment {
 				cd := validIBMCloudClusterDeployment()
+				cd.Spec.Provisioning.ManifestsConfigMapRef = nil
+				cd.Spec.Provisioning.ManifestsSecretRef = nil
+				return cd
+			}(),
+			operation:       admissionv1beta1.Create,
+			expectedAllowed: false,
+		},
+		{
+			name:            "PowerVS create valid",
+			newObject:       validPowerVSClusterDeployment(),
+			operation:       admissionv1beta1.Create,
+			expectedAllowed: true,
+		},
+		{
+			name: "PowerVS create missing manifests",
+			newObject: func() *hivev1.ClusterDeployment {
+				cd := validPowerVSClusterDeployment()
 				cd.Spec.Provisioning.ManifestsConfigMapRef = nil
 				cd.Spec.Provisioning.ManifestsSecretRef = nil
 				return cd
