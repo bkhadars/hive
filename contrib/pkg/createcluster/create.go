@@ -27,6 +27,7 @@ import (
 	gcputils "github.com/openshift/hive/contrib/pkg/utils/gcp"
 	openstackutils "github.com/openshift/hive/contrib/pkg/utils/openstack"
 	ovirtutils "github.com/openshift/hive/contrib/pkg/utils/ovirt"
+	powervsutils "github.com/openshift/hive/contrib/pkg/utils/powervs"
 	"github.com/openshift/hive/pkg/clusterresource"
 	"github.com/openshift/hive/pkg/constants"
 	"github.com/openshift/hive/pkg/gcpclient"
@@ -82,6 +83,9 @@ These are only relevant for creating a cluster on vSphere.
 IC_API_KEY - Used to determine your IBM Cloud API key. Required when
 using --cloud=ibmcloud.
 
+IBMCLOUD_APIKEY - Used to determine your IBM Cloud API key. Required when
+using --cloud=powervs.
+
 RELEASE_IMAGE - Release image to use to install the cluster. If not specified,
 the --release-image flag is used. If that's not specified, a default image is
 obtained from a the following URL:
@@ -95,6 +99,7 @@ const (
 	cloudIBM             = "ibmcloud"
 	cloudOpenStack       = "openstack"
 	cloudOVirt           = "ovirt"
+	cloudPowerVS         = "powervs"
 	cloudVSphere         = "vsphere"
 
 	testFailureManifest = `apiVersion: v1
@@ -114,10 +119,12 @@ var (
 		cloudIBM:       true,
 		cloudOpenStack: true,
 		cloudOVirt:     true,
+		cloudPowerVS:   true,
 		cloudVSphere:   true,
 	}
 	manualCCOModeClouds = map[string]bool{
-		cloudIBM: true,
+		cloudIBM:     true,
+		cloudPowerVS: true,
 	}
 )
 
@@ -211,6 +218,10 @@ type Options struct {
 	IBMAccountID      string
 	IBMInstanceType   string
 
+	// IBMPower VS
+	PowerVSResourceGroupName string
+	Zone                     string
+
 	homeDir string
 	log     log.FieldLogger
 }
@@ -240,6 +251,7 @@ create-cluster CLUSTER_DEPLOYMENT_NAME --cloud=azure --azure-base-domain-resourc
 create-cluster CLUSTER_DEPLOYMENT_NAME --cloud=gcp
 create-cluster CLUSTER_DEPLOYMENT_NAME --cloud=ibmcloud --region="us-east" --base-domain=ibm.hive.openshift.com --manifests=/manifests --credentials-mode-manual
 create-cluster CLUSTER_DEPLOYMENT_NAME --cloud=openstack --openstack-api-floating-ip=192.168.1.2 --openstack-cloud=mycloud
+create-cluster CLUSTER_DEPLOYMENT_NAME --cloud=powervs --zone="dal10" --powervs-resourcegroup-name=<RESOURCEGROUP> --base-domain=rdr-ppcloud.sandbox.cis.ibm.net --manifests=/manifests --credentials-mode-manual
 create-cluster CLUSTER_DEPLOYMENT_NAME --cloud=vsphere --vsphere-vcenter=vmware.devcluster.com --vsphere-datacenter=dc1 --vsphere-default-datastore=nvme-ds1 --vsphere-api-vip=192.168.1.2 --vsphere-ingress-vip=192.168.1.3 --vsphere-cluster=devel --vsphere-network="VM Network" --vsphere-ca-certs=/path/to/cert
 create-cluster CLUSTER_DEPLOYMENT_NAME --cloud=ovirt --ovirt-api-vip 192.168.1.2 --ovirt-dns-vip 192.168.1.3 --ovirt-ingress-vip 192.168.1.4 --ovirt-network-name ovirtmgmt --ovirt-storage-domain-id 00000000-e77a-456b-uuid --ovirt-cluster-id 00000000-8675-11ea-uuid --ovirt-ca-certs ~/.ovirt/ca`,
 		Short: "Creates a new Hive cluster deployment",
@@ -367,6 +379,10 @@ OpenShift Installer publishes all the services of the cluster like API server an
 	// IBM flags
 	flags.StringVar(&opt.IBMInstanceType, "ibm-instance-type", "bx2-4x16", "IBM Cloud instance type")
 
+	// IBMPower VS flags
+	flags.StringVar(&opt.PowerVSResourceGroupName, "powervs-resourcegroup-name", "", "Resource group where the cluster will be installed. This is only relevant to IBMPower VS.")
+	flags.StringVar(&opt.Zone, "zone", "", "Zone where the cluster will be installed. This is only relevant to IBMPower VS.")
+
 	return cmd
 }
 
@@ -393,6 +409,13 @@ func (o *Options) Complete(cmd *cobra.Command, args []string) error {
 			return errors.Wrapf(err, "unable to parse HibernateAfter duration")
 		}
 		o.HibernateAfterDur = &dur
+	}
+
+	if o.Zone == "" {
+		switch o.Cloud {
+		case cloudPowerVS:
+			o.Zone = "dal10"
+		}
 	}
 
 	if manualCloud := manualCCOModeClouds[o.Cloud]; manualCloud && !o.CredentialsModeManual {
@@ -434,6 +457,20 @@ func (o *Options) Validate(cmd *cobra.Command) error {
 		}
 		if o.OpenStackCloud == "" {
 			msg := fmt.Sprintf("--openstack-cloud must be set when using --cloud=%q", cloudOpenStack)
+			o.log.Info(msg)
+			return fmt.Errorf(msg)
+		}
+	}
+
+	if o.Cloud == cloudPowerVS {
+		if o.PowerVSResourceGroupName == "" {
+			msg := fmt.Sprintf("--powervs-resourcegroup-name must be set when using --cloud=%q", cloudPowerVS)
+			o.log.Info(msg)
+			return fmt.Errorf(msg)
+		}
+
+		if o.Zone == "" {
+			msg := fmt.Sprintf("--zone must be set when using --cloud=%q", cloudPowerVS)
 			o.log.Info(msg)
 			return fmt.Errorf(msg)
 		}
@@ -801,6 +838,28 @@ func (o *Options) GenerateObjects() ([]runtime.Object, error) {
 			InstanceType: o.IBMInstanceType,
 		}
 		builder.CloudBuilder = ibmCloudProvider
+	case cloudPowerVS:
+		auth, err := powervsutils.GetAuthenticatorFromEnvironment()
+		if err != nil {
+			return nil, err
+		}
+		props, err := powervsutils.GetProperties()
+		if err != nil {
+			return nil, err
+		}
+		user, err := powervsutils.GetUserID(auth)
+		if err != nil {
+			return nil, err
+		}
+
+		powerVSProvider := &clusterresource.PowerVSBuilder{
+			APIKey:               props["APIKEY"],
+			PowerVSResourceGroup: o.PowerVSResourceGroupName,
+			Region:               powervsutils.GetRegionFromZone(o.Zone),
+			UserID:               user,
+			Zone:                 o.Zone,
+		}
+		builder.CloudBuilder = powerVSProvider
 	}
 
 	if o.Internal {

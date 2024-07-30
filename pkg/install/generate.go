@@ -246,6 +246,9 @@ func InstallerPodSpec(
 		emptyDirs["ovirt-certificates"] = constants.OvirtCertificatesDir
 	case cd.Spec.Platform.IBMCloud != nil:
 		credentialRef = cd.Spec.Platform.IBMCloud.CredentialsSecretRef.Name
+	case cd.Spec.Platform.PowerVS != nil:
+		credentialRef = cd.Spec.Platform.PowerVS.CredentialsSecretRef.Name
+		emptyDirs["powervs"] = constants.PowerVSCredentialsDir
 	case cd.Spec.Platform.BareMetal != nil:
 		if cd.Spec.Platform.BareMetal.LibvirtSSHPrivateKeySecretRef.Name != "" {
 			env = append(env, corev1.EnvVar{
@@ -527,6 +530,8 @@ func GenerateUninstallerJobForDeprovision(
 		completeOvirtDeprovisionJob(req, job)
 	case req.Spec.Platform.IBMCloud != nil:
 		completeIBMCloudDeprovisionJob(req, job)
+	case req.Spec.Platform.IBMCloud != nil:
+		completePowerVSDeprovisionJob(req, job)
 	default:
 		return nil, errors.New("deprovision requests currently not supported for platform")
 	}
@@ -877,4 +882,32 @@ func completeIBMCloudDeprovisionJob(req *hivev1.ClusterDeprovision, job *batchv1
 			},
 		},
 	}
+}
+
+func completePowerVSDeprovisionJob(req *hivev1.ClusterDeprovision, job *batchv1.Job) {
+	env, volumes, volumeMounts := envAndVolumes(
+		req.Namespace,
+		"powervs", constants.PowerVSCredentialsDir, req.Spec.Platform.PowerVS.CredentialsSecretRef.Name,
+		"", "", "")
+
+	job.Spec.Template.Spec.Containers = []corev1.Container{
+		{
+			Name:            "deprovision",
+			Image:           images.GetHiveImage(),
+			ImagePullPolicy: images.GetHiveImagePullPolicy(),
+			Env:             env,
+			Command:         []string{"/usr/bin/hiveutil"},
+			Args: []string{
+				"deprovision", "powervs",
+				req.Spec.InfraID,
+				"--resource-group-name", req.Spec.Platform.PowerVS.PowerVSResourceGroup,
+				"--zone", req.Spec.Platform.PowerVS.Zone,
+				"--base-domain", req.Spec.Platform.PowerVS.BaseDomain,
+				"--cluster-name", req.Spec.ClusterName,
+				"--loglevel", "debug",
+			},
+			VolumeMounts: volumeMounts,
+		},
+	}
+	job.Spec.Template.Spec.Volumes = volumes
 }

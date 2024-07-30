@@ -89,7 +89,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resourcegraph/armresourcegraph v0.8.2 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v1.2.0 // indirect
 	github.com/GaijinEntertainment/go-exhaustruct/v3 v3.1.0 // indirect
-	github.com/IBM-Cloud/power-go-client v1.6.0 // indirect
+	github.com/IBM-Cloud/power-go-client v1.6.0
 	github.com/IBM/keyprotect-go-client v0.12.2 // indirect
 	github.com/OpenPeeDeeP/depguard/v2 v2.1.0 // indirect
 	github.com/alexkohler/nakedret/v2 v2.0.2 // indirect
@@ -102,7 +102,7 @@ require (
 	github.com/curioswitch/go-reassign v0.2.0 // indirect
 	github.com/denis-tingaikin/go-header v0.4.3 // indirect
 	github.com/firefart/nonamedreturns v1.0.4 // indirect
-	github.com/form3tech-oss/jwt-go v3.2.3+incompatible // indirect
+	github.com/form3tech-oss/jwt-go v3.2.3+incompatible
 	github.com/go-openapi/analysis v0.21.5 // indirect
 	github.com/go-openapi/loads v0.21.3 // indirect
 	github.com/go-openapi/runtime v0.26.2 // indirect
@@ -136,6 +136,8 @@ require (
 	sigs.k8s.io/cluster-api-provider-gcp v1.6.0 // indirect
 )
 
+require github.com/IBM-Cloud/bluemix-go v0.0.0-20211102075456-ffc4e11dfb16
+
 require (
 	4d63.com/gochecknoglobals v0.2.1 // indirect
 	github.com/AlecAivazis/survey/v2 v2.3.5 // indirect
@@ -151,7 +153,6 @@ require (
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/Djarvur/go-err113 v0.1.0 // indirect
-	github.com/IBM-Cloud/bluemix-go v0.0.0-20211102075456-ffc4e11dfb16 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/NYTimes/gziphandler v1.1.1 // indirect

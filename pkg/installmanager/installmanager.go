@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -48,6 +49,7 @@ import (
 	"github.com/openshift/installer/pkg/destroy/ibmcloud"
 	"github.com/openshift/installer/pkg/destroy/openstack"
 	"github.com/openshift/installer/pkg/destroy/ovirt"
+	"github.com/openshift/installer/pkg/destroy/powervs"
 	"github.com/openshift/installer/pkg/destroy/providers"
 	"github.com/openshift/installer/pkg/destroy/vsphere"
 	installertypes "github.com/openshift/installer/pkg/types"
@@ -56,6 +58,7 @@ import (
 	installertypesibmcloud "github.com/openshift/installer/pkg/types/ibmcloud"
 	installertypesopenstack "github.com/openshift/installer/pkg/types/openstack"
 	installertypesovirt "github.com/openshift/installer/pkg/types/ovirt"
+	installertypespowervs "github.com/openshift/installer/pkg/types/powervs"
 	installertypesvsphere "github.com/openshift/installer/pkg/types/vsphere"
 
 	hivev1 "github.com/openshift/hive/apis/hive/v1"
@@ -66,6 +69,7 @@ import (
 	ibmutils "github.com/openshift/hive/contrib/pkg/utils/ibmcloud"
 	openstackutils "github.com/openshift/hive/contrib/pkg/utils/openstack"
 	ovirtutils "github.com/openshift/hive/contrib/pkg/utils/ovirt"
+	powervsutils "github.com/openshift/hive/contrib/pkg/utils/powervs"
 	vsphereutils "github.com/openshift/hive/contrib/pkg/utils/vsphere"
 	"github.com/openshift/hive/pkg/awsclient"
 	"github.com/openshift/hive/pkg/constants"
@@ -73,6 +77,7 @@ import (
 	"github.com/openshift/hive/pkg/controller/utils"
 	"github.com/openshift/hive/pkg/gcpclient"
 	"github.com/openshift/hive/pkg/ibmclient"
+	"github.com/openshift/hive/pkg/powervsclient"
 	"github.com/openshift/hive/pkg/resource"
 	k8slabels "github.com/openshift/hive/pkg/util/labels"
 	"github.com/openshift/hive/pkg/util/scheme"
@@ -543,6 +548,12 @@ func loadSecrets(m *InstallManager, cd *hivev1.ClusterDeployment) {
 		ovirtutils.ConfigureCreds(m.DynamicClient)
 	case cd.Spec.Platform.IBMCloud != nil:
 		ibmutils.ConfigureCreds(m.DynamicClient)
+	case cd.Spec.Platform.PowerVS != nil:
+		m.log.Info("configuring powervs Credentials")
+		powervsutils.ConfigureCreds(m.DynamicClient)
+		content, _ := os.ReadFile(os.Getenv("POWERVS_AUTH_FILEPATH"))
+		pc, _, _, _ := runtime.Caller(1)
+		m.log.Infof("content of %s file is %s from %s", os.Getenv("POWERVS_AUTH_FILEPATH"), string(content), runtime.FuncForPC(pc).Name())
 	}
 
 	// Load up the install config and pull secret. These env vars are required; else we'll panic.
@@ -805,6 +816,44 @@ func cleanupFailedProvision(dynClient client.Client, cd *hivev1.ClusterDeploymen
 		if ibmCloudDestroyerErr != nil {
 			return ibmCloudDestroyerErr
 		}
+	case cd.Spec.Platform.PowerVS != nil:
+		// Create PowerVS Client
+		content, err := os.ReadFile(os.Getenv("POWERVS_AUTH_FILEPATH"))
+		if err != nil {
+			return err
+		}
+		var ss powervsutils.SessionStore
+		err = json.Unmarshal(content, &ss)
+		if ss.APIKey == "" {
+			return fmt.Errorf("failed to read the apikey")
+		}
+		powerVSClient, err := powervsclient.NewClient(ss.APIKey)
+		if err != nil {
+			return errors.Wrap(err, "Unable to create IBM Cloud client")
+		}
+		// Retrieve CISInstanceCRN
+		cisInstanceCRN, err := powervsclient.GetCISInstanceCRN(powerVSClient, context.TODO(), cd.Spec.BaseDomain)
+		if err != nil {
+			return err
+		}
+		metadata := &installertypes.ClusterMetadata{
+			InfraID:     infraID,
+			ClusterName: cd.Spec.ClusterName,
+			ClusterPlatformMetadata: installertypes.ClusterPlatformMetadata{
+				PowerVS: &installertypespowervs.Metadata{
+					BaseDomain:           cd.Spec.BaseDomain,
+					CISInstanceCRN:       cisInstanceCRN,
+					Region:               cd.Spec.Platform.PowerVS.Region,
+					PowerVSResourceGroup: cd.Spec.Platform.PowerVS.PowerVSResourceGroup,
+					Zone:                 cd.Spec.Platform.PowerVS.Zone,
+				},
+			},
+		}
+		var powerVSDestroyerErr error
+		uninstaller, powerVSDestroyerErr = powervs.New(logger, metadata)
+		if powerVSDestroyerErr != nil {
+			return powerVSDestroyerErr
+		}
 	default:
 		logger.Warn("unknown platform for re-try cleanup")
 		return errors.New("unknown platform for re-try cleanup")
@@ -827,6 +876,10 @@ func (m *InstallManager) generateAssets(cd *hivev1.ClusterDeployment, mapPoolsBy
 	if !ok {
 		workerMachinePool = nil
 	}
+
+	content, _ := os.ReadFile(os.Getenv("POWERVS_AUTH_FILEPATH"))
+	pc, _, _, _ := runtime.Caller(1)
+	m.log.Infof("content of %s file is %s from %s", os.Getenv("POWERVS_AUTH_FILEPATH"), string(content), runtime.FuncForPC(pc).Name())
 
 	err := m.runOpenShiftInstallCommand("create", "manifests")
 	if err != nil {
@@ -1149,6 +1202,9 @@ func provisionCluster(m *InstallManager) error {
 }
 
 func (m *InstallManager) runOpenShiftInstallCommand(args ...string) error {
+	content, _ := os.ReadFile(os.Getenv("POWERVS_AUTH_FILEPATH"))
+	pc, _, _, _ := runtime.Caller(1)
+	m.log.Infof("content of %s file is %s from %s", os.Getenv("POWERVS_AUTH_FILEPATH"), string(content), runtime.FuncForPC(pc).Name())
 	m.log.WithField("args", args).Info("running openshift-install binary")
 	cmd := exec.Command(filepath.Join(m.binaryDir, "openshift-install"), args...)
 	cmd.Dir = m.WorkDir

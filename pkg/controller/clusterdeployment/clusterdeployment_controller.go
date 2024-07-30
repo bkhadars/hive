@@ -112,6 +112,7 @@ const (
 	tryInstallOnceAnnotation = "hive.openshift.io/try-install-once"
 
 	regionUnknown     = "unknown"
+	zoneUnknown       = "unknown"
 	injectCABundleKey = "config.openshift.io/inject-trusted-cabundle"
 )
 
@@ -531,6 +532,23 @@ func (r *ReconcileClusterDeployment) reconcile(request reconcile.Request, cd *hi
 		err := r.Update(context.TODO(), cd)
 		if err != nil {
 			cdLog.WithError(err).Log(controllerutils.LogLevel(err), "failed to set cluster region label")
+		}
+		return reconcile.Result{}, err
+	}
+
+	// Set Zone label on the ClusterDeployment
+	if zone := getClusterZone(cd); cd.Spec.Platform.PowerVS != nil && cd.Labels[hivev1.HiveClusterZoneLabel] != zone {
+		if cd.Labels == nil {
+			cd.Labels = make(map[string]string)
+		}
+		if cd.Labels[hivev1.HiveClusterZoneLabel] != "" {
+			cdLog.Warnf("changing the value of %s from %s to %s", hivev1.HiveClusterZoneLabel,
+				cd.Labels[hivev1.HiveClusterZoneLabel], zone)
+		}
+		cd.Labels[hivev1.HiveClusterZoneLabel] = zone
+		err := r.Update(context.TODO(), cd)
+		if err != nil {
+			cdLog.WithError(err).Log(controllerutils.LogLevel(err), "failed to set cluster zone label")
 		}
 		return reconcile.Result{}, err
 	}
@@ -1925,6 +1943,13 @@ func generateDeprovision(cd *hivev1.ClusterDeployment) (*hivev1.ClusterDeprovisi
 			Region:               cd.Spec.Platform.IBMCloud.Region,
 			BaseDomain:           cd.Spec.BaseDomain,
 		}
+	case cd.Spec.Platform.PowerVS != nil:
+		req.Spec.Platform.PowerVS = &hivev1.PowerVSClusterDeprovision{
+			BaseDomain:           cd.Spec.BaseDomain,
+			CredentialsSecretRef: cd.Spec.Platform.PowerVS.CredentialsSecretRef,
+			Region:               cd.Spec.Platform.PowerVS.Region,
+			Zone:                 cd.Spec.Platform.PowerVS.Zone,
+		}
 	default:
 		return nil, errors.New("unsupported cloud provider for deprovision")
 	}
@@ -2611,6 +2636,8 @@ func getClusterPlatform(cd *hivev1.ClusterDeployment) string {
 		return constants.PlatformNone
 	case cd.Spec.Platform.Ovirt != nil:
 		return constants.PlatformOvirt
+	case cd.Spec.Platform.PowerVS != nil:
+		return constants.PlatformPowerVS
 	}
 	return constants.PlatformUnknown
 }
@@ -2626,8 +2653,19 @@ func getClusterRegion(cd *hivev1.ClusterDeployment) string {
 		return cd.Spec.Platform.GCP.Region
 	case cd.Spec.Platform.IBMCloud != nil:
 		return cd.Spec.Platform.IBMCloud.Region
+	case cd.Spec.Platform.PowerVS != nil:
+		return cd.Spec.Platform.PowerVS.Region
 	}
 	return regionUnknown
+}
+
+// getClusterZone returns the zone of a given ClusterDeployment
+func getClusterZone(cd *hivev1.ClusterDeployment) string {
+	switch {
+	case cd.Spec.Platform.PowerVS != nil:
+		return cd.Spec.Platform.PowerVS.Zone
+	}
+	return zoneUnknown
 }
 
 func LoadReleaseImageVerifier(config *rest.Config) (verify.Interface, error) {

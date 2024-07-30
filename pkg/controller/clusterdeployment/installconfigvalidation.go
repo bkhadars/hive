@@ -15,6 +15,7 @@ const (
 	noGCPPlatformErr     = "install config did not contain a GCP platform"
 	noAzurePlatformErr   = "install config did not contain an Azure platform"
 	novSpherePlatformErr = "install config did not contain an vSphere platform"
+	noPowerVSPlatformErr = "install config did not contain a IBMPower VS platform"
 	regionMismatchErr    = "install config region does not match cluster deployment region"
 
 	missingvSphereCredentialsErr = "install config does not contain username/password for vSphere platform"
@@ -65,6 +66,13 @@ func ValidateInstallConfig(cd *hivev1.ClusterDeployment, installConfigSecret *co
 			(len(ic.Platform.VSphere.VCenters) == 0 || ic.Platform.VSphere.VCenters[0].Username == "" ||
 				ic.Platform.VSphere.VCenters[0].Password == "") {
 			return ic, errors.New(missingvSphereCredentialsErr)
+		}
+	case platform.PowerVS != nil:
+		if ic.Platform.PowerVS == nil {
+			return ic, errors.New(noPowerVSPlatformErr)
+		}
+		if ic.Platform.PowerVS.Region != cd.Spec.Platform.PowerVS.Region {
+			return ic, errors.New(regionMismatchErr)
 		}
 	}
 	return ic, nil
